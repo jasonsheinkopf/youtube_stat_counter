@@ -11,6 +11,15 @@ import pytz
 import colorsys
 
 
+# How many seconds between stat checks
+wait_time = 60
+
+# Set timezone
+timezone = pytz.timezone('Asia/Tokyo')
+# Time when awake hours begins
+wake_hour = 9
+sleep_hour = 21
+
 # Your personal API key and channel ID
 API_KEY = 'AIzaSyDzq_TFOT8qNbSHrbMz1Y_F5mpKrUXOq3s'
 CHANNEL_ID = 'UCPAtrpdvJTHjy0c19zlWBGw'
@@ -66,8 +75,10 @@ def get_video_view_counts(channel_id, api_key):
             for video in video_list:
                 # Check if video object has already been added to list
                 if video.title == video_title:
+                    # Update current views
+                    video.current_views = view_count
                     # Record views added
-                    video.views_added = video.current_views - video.prev_views
+                    video.views_added = video.count_new_views()
                     # Set prev views to current for next cycle
                     video.prev_views = video.current_views
                     # Set flag to True indicating video was found
@@ -81,9 +92,8 @@ def get_video_view_counts(channel_id, api_key):
                 # Append it to the list
                 video_list.append(new_video)
                 print(f"Video {video_title} added")
-            
-        # for video in video_list:
-        #     print(video.title)
+        
+        # Count API calls
         print(f"Api calls: {api_calls}")
         return video_list
     
@@ -135,12 +145,6 @@ def get_rainbow_color():
     
     # Return the color as a tuple
     return red, green, blue
-
-# Set timezone
-timezone = pytz.timezone('Asia/Tokyo')
-# Time when awake hours begins
-wake_hour = 9
-sleep_hour = 21
 
 # Set starting postion of pygame window
 screen_x = 0
@@ -214,9 +218,6 @@ font_size = 14
 font_color = (0, 0, 0)
 font = pygame.font.Font(font_path, font_size)
 
-# How many seconds between stat checks
-wait_time = 5
-
 # Create a clock object
 clock = pygame.time.Clock()
 time_since_last_check = 0
@@ -227,6 +228,10 @@ prev_subscriber_count = subscriber_count
 
 # Initialize view counts
 video_view_counts = get_video_view_counts(CHANNEL_ID, API_KEY)
+
+# Set wake views to current views when first starting code
+for video in video_list:
+    video.views_at_wake = video.current_views
 
 # Run the game loop
 running = True
@@ -248,6 +253,12 @@ while running:
     # Initialize total_new_views
     total_new_views = 0
 
+    # Record beginning of day views at wake hour
+    current_time = datetime.datetime.now(timezone)
+    if current_time.hour == wake_hour and current_time.minute == 0 and current_time.second == 0:
+        for video in video_view_counts:
+            video.wake_views = video.current_views
+
     # Check if it's time to check new stats
     if time_since_last_check >= wait_time * 1000 and video_playing == False:
         time_since_last_check = 0
@@ -258,10 +269,10 @@ while running:
         # Get subscribers count
         subscriber_count = get_subscribers_count(CHANNEL_ID, API_KEY)
 
-        # Count new views for each video
+        # Update new views since last api call and update today views
         [video.count_new_views() for video in video_view_counts]
 
-        # Count total new views
+        # Count total new views for all videos since api call
         for video in video_view_counts:
             total_new_views += video.views_added
       
@@ -270,7 +281,7 @@ while running:
             # Randomly select a sound effect from the dir
             view_sound_object = pygame.mixer.Sound(random.choice(view_aud_list))
             duration = int(view_sound_object.get_length() * 1000)
-            view_sound_object.set_volume(1)
+            view_sound_object.set_volume(.3)
             view_sound_object.play(maxtime=duration)
 
     # Clear the window
@@ -288,20 +299,31 @@ while running:
     # Enable underline for the font
     font.set_underline(True)
 
+    # Set text positions
+    day_view_x = 20
+    views_x = 80
+    title_x = 135
+    headings_y = 160
+    text_spacing = 20
+
+    # Render the today heading
+    views_heading = font.render(f"Today", True, font_color)  # Set the text color to black
+    window.blit(views_heading, (day_view_x, headings_y - text_spacing))  # Adjust the position of the text according to your layout
+
     # Render the views heading
     views_heading = font.render(f"Views", True, font_color)  # Set the text color to black
-    window.blit(views_heading, (60, 125))  # Adjust the position of the text according to your layout
+    window.blit(views_heading, (views_x, headings_y - text_spacing))  # Adjust the position of the text according to your layout
 
     # Render the title heading
     title_heading = font.render(f"Title", True, font_color)  # Set the text color to black
-    window.blit(title_heading, (125, 125))  # Adjust the position of the text according to your layout
+    window.blit(title_heading, (title_x, headings_y - text_spacing))  # Adjust the position of the text according to your layout
 
     # Enable underline for the font
     font.set_underline(False)
 
     # Reorder video view counts by most views
     video_view_counts = sorted(video_view_counts, key=lambda video: video.current_views, reverse=True)
-    
+
     # Render video text
     for i, video in enumerate(video_view_counts):
         video_title = video.title.title()
@@ -310,22 +332,34 @@ while running:
             video_title = video_title.split("#")[0]
         if "-" in video_title:
             video_title = video_title.split("-")[0]
+        # Limit title characters
+        video_title = video_title[:22]
         # Print video count to screen
         count_text = font.render(str(video.current_views), True, font_color)
-        window.blit(count_text, (60, 150 + 20 * i))
+        window.blit(count_text, (views_x, headings_y + text_spacing * i))
         # Print title to screen
         title_text = font.render(video_title, True, font_color)
-        window.blit(title_text, (125, 150 + 20 * i))
-        # Print new views added to screeen
+        window.blit(title_text, (title_x, headings_y + text_spacing * i))
+        # Check for new views since last update
         if video.views_added > 0:
-            added_text = font.render("+" + str(video.views_added), True, rainbow_color)
-            window.blit(added_text, (25, 150 + 20 * i))
+            # Display day views in rainbow if recently updated
+            added_text = font.render("+" + str(video.today_views), True, rainbow_color)
+        else:
+            # Else in font color
+            added_text = font.render("+" + str(video.today_views), True, font_color)
+        window.blit(added_text, (day_view_x, headings_y + text_spacing * i))
+
+    # Print counts every 5 seconds for debugging
+    if pygame.time.get_ticks() % 5000 == 0:
+        for video in video_view_counts:
+            print(video.current_views, video.title)
+        print() 
 
     # Play video if new subscribers
     if subscriber_count > prev_subscriber_count and not video_playing:   # change to >
         sub_aud_object = pygame.mixer.Sound(sub_aud_path)
         sub_aud_dur = int(sub_aud_object.get_length() * 1000)
-        sub_aud_object.set_volume(0.2)
+        sub_aud_object.set_volume(0.4)
         sub_aud_object.play(maxtime=sub_aud_dur)
         video_playing = True
         video_start_time = pygame.time.get_ticks() / 1000
