@@ -17,7 +17,7 @@ wait_time = 60
 # Set timezone
 timezone = pytz.timezone('Asia/Tokyo')
 # Time when awake hours begins
-wake_hour = 9
+wake_hour = 8
 sleep_hour = 21
 
 # Your personal API key and channel ID
@@ -75,12 +75,22 @@ def get_video_view_counts(channel_id, api_key):
             for video in video_list:
                 # Check if video object has already been added to list
                 if video.title == video_title:
+                    # Set prev views to current for next cycle
+                    video.prev_views = video.current_views          
+
                     # Update current views
                     video.current_views = view_count
-                    # Record views added
-                    video.views_added = video.count_new_views()
-                    # Set prev views to current for next cycle
-                    video.prev_views = video.current_views
+                    
+                    # # For debugging make first video get more counts DELETE LATER
+                    # if video_list.index(video) == 0:
+                    #     video.current_views += api_calls
+
+                    # Update views added
+                    video.views_added = video.current_views - video.prev_views
+
+                    # Update today views
+                    video.today_views = video.current_views - video.views_at_wake
+
                     # Set flag to True indicating video was found
                     video_exists = True
                     break
@@ -123,10 +133,16 @@ def wake_sleep():
     current_time = datetime.datetime.now(timezone)
 
     # Turn off sounds during sleep hours
-    if wake_hour < current_time.hour <= sleep_hour:
-        pygame.mixer.unpause()
+    if wake_hour <= current_time.hour < sleep_hour:
+        # pygame.mixer.unpause()
+        is_sleep = False
+        print(f"{current_time} | Wake Hours: Yay!")
     else:
-        pygame.mixer.pause()
+        # pygame.mixer.pause()
+        is_sleep = True
+        print(f"{current_time} | Sleep Hours: shhhh!")
+
+    return is_sleep
 
 def get_rainbow_color():
     # Get the elapsed time in milliseconds
@@ -192,7 +208,7 @@ video_playing = False
 
 # Load logo
 logo_sf = 0.07
-logo = pygame.image.load('akiya_quest_logo.png')
+logo = pygame.image.load('media/images/akiya_quest_logo.png')
 
 # Calculate the new dimensions of the resized image
 new_logo_w = int(logo.get_width() * logo_sf)
@@ -201,9 +217,9 @@ new_logo_h = int(logo.get_height() * logo_sf)
 # Resize the image while preserving the aspect ratio
 resized_logo = pygame.transform.scale(logo, (new_logo_w, new_logo_h))
 
-# Load title
+# Load channel title image
 title_sf = 0.13
-title = pygame.image.load('akiya_quest_title.png')
+title = pygame.image.load('media/images/akiya_quest_title.png')
 
 # Calculate the new dimensions of the resized image
 new_title_w = int(title.get_width() * title_sf)
@@ -212,8 +228,52 @@ new_title_h = int(title.get_height() * title_sf)
 # Resize the image while preserving the aspect ratio
 resized_title = pygame.transform.scale(title, (new_title_w, new_title_h))
 
-# Load the custom font 'Fujimaru-Regular.ttf'
+# Load night background image
+night_backdrop = pygame.image.load('media/images/night_backdrop.jpeg')
+
+# Calculate the scale factor to fit the screen
+sf_w = width / night_backdrop.get_width()
+sf_h = height / night_backdrop.get_height()
+
+# Choose the larger scale factor to maintain aspect ratio
+night_backdrop_sf = max(sf_w, sf_h)
+
+# Calculate the new dimensions of the resized image
+new_night_backdrop_w = int(night_backdrop.get_width() * night_backdrop_sf)
+new_night_backdrop_h = int(night_backdrop.get_height() * night_backdrop_sf)
+
+# Resize the image while preserving the aspect ratio
+resized_night_backdrop = pygame.transform.scale(night_backdrop, (new_night_backdrop_w, new_night_backdrop_h))
+
+# Set the alpha transparency (opacity) of the image (0 to 255)
+alpha_value = 40  # Adjust this value to set the desired transparency
+resized_night_backdrop.set_alpha(alpha_value)
+
+# Load day background image
+day_backdrop = pygame.image.load('media/images/day_backdrop.jpeg')
+
+# Calculate the scale factor to fit the screen
+sf_w = width / day_backdrop.get_width()
+sf_h = height / day_backdrop.get_height()
+
+# Choose the larger scale factor to maintain aspect ratio
+day_backdrop_sf = max(sf_w, sf_h)
+
+# Calculate the new dimensions of the resized image
+new_day_backdrop_w = int(day_backdrop.get_width() * day_backdrop_sf)
+new_day_backdrop_h = int(day_backdrop.get_height() * day_backdrop_sf)
+
+# Resize the image while preserving the aspect ratio
+resized_day_backdrop = pygame.transform.scale(day_backdrop, (new_day_backdrop_w, new_day_backdrop_h))
+
+# Set the alpha transparency (opacity) of the image (0 to 255)
+alpha_value = 40  # Adjust this value to set the desired transparency
+resized_day_backdrop.set_alpha(alpha_value)
+
+# Load the custom font
 font_path = 'Nexa-Heavy.ttf'
+# font_path = 'MAGIMTOS.ttf'
+# font_path = 'Quebab-Shadow-ffp.ttf'
 font_size = 14
 font_color = (0, 0, 0)
 font = pygame.font.Font(font_path, font_size)
@@ -233,14 +293,14 @@ video_view_counts = get_video_view_counts(CHANNEL_ID, API_KEY)
 for video in video_list:
     video.views_at_wake = video.current_views
 
+# Bool to track sleep hours
+is_sleep = wake_sleep()
+
 # Run the game loop
 running = True
 while running:
     # Cycle through colors based on ticks
     rainbow_color = get_rainbow_color()
-    
-    # Handle wake sleep
-    wake_sleep()
 
     # Handle events
     for event in pygame.event.get():
@@ -263,14 +323,14 @@ while running:
     if time_since_last_check >= wait_time * 1000 and video_playing == False:
         time_since_last_check = 0
 
+         # Handle wake sleep
+        is_sleep = wake_sleep()
+       
         # Get video view counts
         video_view_counts = get_video_view_counts(CHANNEL_ID, API_KEY)
 
         # Get subscribers count
         subscriber_count = get_subscribers_count(CHANNEL_ID, API_KEY)
-
-        # Update new views since last api call and update today views
-        [video.count_new_views() for video in video_view_counts]
 
         # Count total new views for all videos since api call
         for video in video_view_counts:
@@ -282,10 +342,14 @@ while running:
             view_sound_object = pygame.mixer.Sound(random.choice(view_aud_list))
             duration = int(view_sound_object.get_length() * 1000)
             view_sound_object.set_volume(.3)
-            view_sound_object.play(maxtime=duration)
+            view_sound_object.play(maxtime=duration) if not is_sleep else None
+            pygame.time.delay(1000)
 
     # Clear the window
     window.fill((255, 255, 255))  # Set the background color to white
+
+    # Blit the appropriate backdrop
+    window.blit(resized_night_backdrop, (0, 0)) if is_sleep else window.blit(resized_day_backdrop, (0, 0))    
 
     # Center the resized images on the screen
     window.blit(resized_logo, (15, 15))
@@ -341,9 +405,11 @@ while running:
         title_text = font.render(video_title, True, font_color)
         window.blit(title_text, (title_x, headings_y + text_spacing * i))
         # Check for new views since last update
-        if video.views_added > 0:
+        if video.views_added > 0 and video.prev_views != 0:
             # Display day views in rainbow if recently updated
             added_text = font.render("+" + str(video.today_views), True, rainbow_color)
+            print(f"Video: {video.title} | Prev: {video.prev_views} | Cur: {video.prev_views} | Add: {video.views_added}")
+            # pygame.time.delay(5000)
         else:
             # Else in font color
             added_text = font.render("+" + str(video.today_views), True, font_color)
@@ -360,7 +426,7 @@ while running:
         sub_aud_object = pygame.mixer.Sound(sub_aud_path)
         sub_aud_dur = int(sub_aud_object.get_length() * 1000)
         sub_aud_object.set_volume(0.4)
-        sub_aud_object.play(maxtime=sub_aud_dur)
+        sub_aud_object.play(maxtime=sub_aud_dur) if not is_sleep else None
         video_playing = True
         video_start_time = pygame.time.get_ticks() / 1000
     # Handle case if subscribers are lost
@@ -384,7 +450,6 @@ while running:
             # pygame.mixer.music.stop()
             sub_vid.close()
             prev_subscriber_count = subscriber_count
-            
 
     # Update the display
     pygame.display.flip()
