@@ -4,25 +4,28 @@ import pygame
 import os
 from video_stats import Video
 from moviepy.editor import VideoFileClip
-import pyglet
 import random
 import datetime
 import pytz
 import colorsys
+from dotenv import load_dotenv
 
+# load environmental variables
+load_dotenv()
 
-# How many seconds between stat checks
+# How many seconds between API calls
 wait_time = 60
 
 # Set timezone
 timezone = pytz.timezone('Asia/Tokyo')
+
 # Time when awake hours begins
 wake_hour = 8
 sleep_hour = 21
 
 # Your personal API key and channel ID
-API_KEY = 'AIzaSyDzq_TFOT8qNbSHrbMz1Y_F5mpKrUXOq3s'
-CHANNEL_ID = 'UCPAtrpdvJTHjy0c19zlWBGw'
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_CHANNEL_ID = os.getenv("GOOGLE_CHANNEL_ID")
 
 # List to store video objects
 video_list = []
@@ -80,10 +83,6 @@ def get_video_view_counts(channel_id, api_key):
 
                     # Update current views
                     video.current_views = view_count
-                    
-                    # # For debugging make first video get more counts DELETE LATER
-                    # if video_list.index(video) == 0:
-                    #     video.current_views += api_calls
 
                     # Update views added
                     video.views_added = video.current_views - video.prev_views
@@ -119,7 +118,6 @@ def get_subscribers_count(channel_id, api_key):
             part='statistics',
             id=channel_id
         ).execute()
-
         # Extract the subscriber count from the response
         subscriber_count = int(channel_response['items'][0]['statistics']['subscriberCount'])
 
@@ -136,11 +134,11 @@ def wake_sleep():
     if wake_hour <= current_time.hour < sleep_hour:
         # pygame.mixer.unpause()
         is_sleep = False
-        print(f"{current_time} | Wake Hours: Yay!")
+        print(f"{current_time} | Wake Hours")
     else:
         # pygame.mixer.pause()
         is_sleep = True
-        print(f"{current_time} | Sleep Hours: shhhh!")
+        print(f"{current_time} | Sleep Hours")
 
     return is_sleep
 
@@ -173,7 +171,7 @@ pygame.init()
 # Set up the window
 width, height = 320, 480  # Set the window size according to your touch screen
 window = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Akiya Quest Stats")
+pygame.display.set_caption("Akiya Quest YouTube Channel Stats")
 
 # View audio dir
 view_aud_dir = 'media/view_sounds'
@@ -190,7 +188,7 @@ for root, dirs, files in os.walk(view_aud_dir):
 
 # Create sub audio and video object
 sub_vid_path = "./media/pon_chorus.mp4"
-sub_aud_path = "./media/pon_chorus.mp3"
+sub_aud_path = "./media/pon_chorus.wav"
 sub_vid = VideoFileClip(sub_vid_path)
 
 # Set video location and scale factor
@@ -208,7 +206,7 @@ video_playing = False
 
 # Load logo
 logo_sf = 0.07
-logo = pygame.image.load('media/images/akiya_quest_logo.png')
+logo = pygame.image.load('media/images/logo.png')
 
 # Calculate the new dimensions of the resized image
 new_logo_w = int(logo.get_width() * logo_sf)
@@ -219,7 +217,7 @@ resized_logo = pygame.transform.scale(logo, (new_logo_w, new_logo_h))
 
 # Load channel title image
 title_sf = 0.13
-title = pygame.image.load('media/images/akiya_quest_title.png')
+title = pygame.image.load('media/images/channel_name.png')
 
 # Calculate the new dimensions of the resized image
 new_title_w = int(title.get_width() * title_sf)
@@ -229,7 +227,7 @@ new_title_h = int(title.get_height() * title_sf)
 resized_title = pygame.transform.scale(title, (new_title_w, new_title_h))
 
 # Load night background image
-night_backdrop = pygame.image.load('media/images/night_backdrop.jpeg')
+night_backdrop = pygame.image.load('media/images/night.jpeg')
 
 # Calculate the scale factor to fit the screen
 sf_w = width / night_backdrop.get_width()
@@ -250,7 +248,7 @@ alpha_value = 40  # Adjust this value to set the desired transparency
 resized_night_backdrop.set_alpha(alpha_value)
 
 # Load day background image
-day_backdrop = pygame.image.load('media/images/day_backdrop.jpeg')
+day_backdrop = pygame.image.load('media/images/day.jpeg')
 
 # Calculate the scale factor to fit the screen
 sf_w = width / day_backdrop.get_width()
@@ -283,11 +281,11 @@ clock = pygame.time.Clock()
 time_since_last_check = 0
 
 # Initialize subscriber count
-subscriber_count = get_subscribers_count(CHANNEL_ID, API_KEY)
+subscriber_count = get_subscribers_count(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
 prev_subscriber_count = subscriber_count
 
 # Initialize view counts
-video_view_counts = get_video_view_counts(CHANNEL_ID, API_KEY)
+video_view_counts = get_video_view_counts(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
 
 # Set wake views to current views when first starting code
 for video in video_list:
@@ -327,10 +325,11 @@ while running:
         is_sleep = wake_sleep()
        
         # Get video view counts
-        video_view_counts = get_video_view_counts(CHANNEL_ID, API_KEY)
+        video_view_counts = get_video_view_counts(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
 
         # Get subscribers count
-        subscriber_count = get_subscribers_count(CHANNEL_ID, API_KEY)
+        subscriber_count = get_subscribers_count(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
+        subscriber_count += 1
 
         # Count total new views for all videos since api call
         for video in video_view_counts:
@@ -453,8 +452,6 @@ while running:
 
     # Update the display
     pygame.display.flip()
-
-    # print(f"Sub: {subscriber_count} | PrevSub: {prev_subscriber_count}")
 
 # Quit Pygame
 pygame.quit()
