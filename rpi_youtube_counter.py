@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # How many seconds between API calls
-wait_time = 30
+wait_time = 60
 
 # Set timezone
 timezone = pytz.timezone('Asia/Tokyo')
@@ -25,7 +25,7 @@ sleep_hour = 21
 
 # Your personal API key and channel ID
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GOOGLE_CHANNEL_ID = os.getenv("GOOGLE_CHANNEL_ID")
+YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID")
 
 # List to store video objects
 video_list = []
@@ -281,11 +281,11 @@ clock = pygame.time.Clock()
 time_since_last_check = 0
 
 # Initialize subscriber count
-subscriber_count = get_subscribers_count(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
+subscriber_count = get_subscribers_count(YOUTUBE_CHANNEL_ID, GOOGLE_API_KEY)
 prev_subscriber_count = subscriber_count
 
 # Initialize view counts
-video_view_counts = get_video_view_counts(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
+video_view_counts = get_video_view_counts(YOUTUBE_CHANNEL_ID, GOOGLE_API_KEY)
 
 # Set wake views to current views when first starting code
 for video in video_list:
@@ -325,10 +325,10 @@ while running:
         is_sleep = wake_sleep()
        
         # Get video view counts
-        video_view_counts = get_video_view_counts(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
+        video_view_counts = get_video_view_counts(YOUTUBE_CHANNEL_ID, GOOGLE_API_KEY)
 
         # Get subscribers count
-        subscriber_count = get_subscribers_count(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
+        subscriber_count = get_subscribers_count(YOUTUBE_CHANNEL_ID, GOOGLE_API_KEY)
 
         # Count total new views for all videos since api call
         for video in video_view_counts:
