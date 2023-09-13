@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # How many seconds between API calls
-wait_time = 60
+wait_time = 30
 
 # Set timezone
 timezone = pytz.timezone('Asia/Tokyo')
@@ -89,6 +89,8 @@ def get_video_view_counts(channel_id, api_key):
 
                     # Update today views
                     video.today_views = video.current_views - video.views_at_wake
+                    # if len(video.title) % 3 == 0:                   # for testing
+                    #     video.today_views += random.randint(1, 20)  # for testing
 
                     # Set flag to True indicating video was found
                     video_exists = True
@@ -187,8 +189,8 @@ for root, dirs, files in os.walk(view_aud_dir):
         view_aud_list.append(file_path)
 
 # Create sub audio and video object
-sub_vid_path = "./media/pon_chorus.mp4"
-sub_aud_path = "./media/pon_chorus.wav"
+sub_vid_path = "./media/subscriber_vid.mp4"
+sub_aud_path = "./media/subscriber_audio.wav"
 sub_vid = VideoFileClip(sub_vid_path)
 
 # Set video location and scale factor
@@ -270,8 +272,6 @@ resized_day_backdrop.set_alpha(alpha_value)
 
 # Load the custom font
 font_path = 'Nexa-Heavy.ttf'
-# font_path = 'MAGIMTOS.ttf'
-# font_path = 'Quebab-Shadow-ffp.ttf'
 font_size = 14
 font_color = (0, 0, 0)
 font = pygame.font.Font(font_path, font_size)
@@ -403,7 +403,7 @@ while running:
         title_text = font.render(video_title, True, font_color)
         window.blit(title_text, (title_x, headings_y + text_spacing * i))
         # Check for new views since last update
-        if video.views_added > 0 and video.prev_views != 0:
+        if video.today_views > 0 and video.prev_views != 0:
             # Display day views in rainbow if recently updated
             added_text = font.render("+" + str(video.today_views), True, rainbow_color)
             print(f"Video: {video.title} | Prev: {video.prev_views} | Cur: {video.prev_views} | Add: {video.views_added}")
