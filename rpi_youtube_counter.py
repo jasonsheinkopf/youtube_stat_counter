@@ -329,7 +329,6 @@ while running:
 
         # Get subscribers count
         subscriber_count = get_subscribers_count(GOOGLE_CHANNEL_ID, GOOGLE_API_KEY)
-        subscriber_count += 1
 
         # Count total new views for all videos since api call
         for video in video_view_counts:
