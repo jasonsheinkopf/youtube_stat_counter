@@ -1,6 +1,6 @@
 # YouTube Stat Counter
 YouTube Stat Counter is graphical displays that fetches stats by API and shows a channel's current view and subscriber counts.
-- Vidoes in descending order ranked by total views
+- Videos in descending order ranked by total views
 - Video title hashtags removed for display
 - Includes daily views per video
 - Current subscriber count
